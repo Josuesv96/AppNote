@@ -1,0 +1,244 @@
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8">
+          <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2"/>
+          <path d="M8 12h8M12 8v8" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <span class="brand-name">AppNote</span>
+    </div>
+    <div class="sidebar-section">Mis pacientes</div>
+    <nav class="sidebar-nav">
+      <button *ngFor="let p of pacientes"
+        [class.active]="pacienteSeleccionado?.id === p.id"
+        (click)="seleccionar(p)">
+        <i class="pi pi-user"></i> {{ p.nombre }}
+      </button>
+      <div *ngIf="!pacientes.length" class="no-pacientes">Sin pacientes asignados</div>
+    </nav>
+    <div class="sidebar-footer">
+      <span class="user-name">{{ auth.getNombre() }}</span>
+      <button class="logout-btn" (click)="auth.logout()"><i class="pi pi-sign-out"></i></button>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <div *ngIf="!pacienteSeleccionado" class="empty-state">
+      <i class="pi pi-users" style="font-size:40px;color:var(--sky-mid)"></i>
+      <p>Selecciona un paciente para ver su información</p>
+    </div>
+
+    <div *ngIf="pacienteSeleccionado">
+      <div class="page-header">
+        <div class="page-title">{{ pacienteSeleccionado.nombre }}</div>
+        <span class="tag">{{ pacienteSeleccionado.email }}</span>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn" [class.active]="vistaDetalle==='entradas'" (click)="cambiarVista('entradas')">
+          <i class="pi pi-book"></i> Entradas
+        </button>
+        <button class="tab-btn" [class.active]="vistaDetalle==='graficas'" (click)="cambiarVista('graficas')">
+          <i class="pi pi-chart-line"></i> Gráficas
+        </button>
+        <button class="tab-btn" [class.active]="vistaDetalle==='expediente'" (click)="cambiarVista('expediente')">
+          <i class="pi pi-id-card"></i> Expediente
+        </button>
+        <button class="tab-btn" [class.active]="vistaDetalle==='notas'" (click)="cambiarVista('notas')">
+          <i class="pi pi-file-edit"></i> Notas de sesión
+        </button>
+      </div>
+
+      <!-- Tab: Entradas -->
+      <div *ngIf="vistaDetalle==='entradas'">
+        <div class="stats-grid" *ngIf="estadisticas && !estadisticas.mensaje">
+          <div class="stat-card app-card">
+            <div class="stat-label">Entradas totales</div>
+            <div class="stat-val">{{ estadisticas.total_entradas }}</div>
+          </div>
+          <div class="stat-card app-card">
+            <div class="stat-label">Ánimo promedio</div>
+            <div class="stat-val sky">{{ estadisticas.promedio_animo }}<span>/10</span></div>
+          </div>
+          <div class="stat-card app-card">
+            <div class="stat-label">Ansiedad promedio</div>
+            <div class="stat-val warn">{{ estadisticas.promedio_ansiedad }}<span>/10</span></div>
+          </div>
+          <div class="stat-card app-card">
+            <div class="stat-label">Emoción frecuente</div>
+            <div class="stat-val sm">{{ estadisticas.emociones_frecuentes?.[0]?.[0] ?? '—' }}</div>
+          </div>
+        </div>
+        <div class="section-title">Entradas recientes</div>
+        <div *ngIf="!entradas.length" class="no-data">Sin entradas aún.</div>
+        <div class="entry-card app-card" *ngFor="let e of entradas">
+          <div class="entry-head">
+            <span class="entry-date">{{ formatFecha(e.timestamp) }}</span>
+            <span class="ind mood">◉ {{ e.estado_animo }}/10</span>
+            <span class="ind anx">⚡ {{ e.ansiedad }}/10</span>
+          </div>
+          <p class="entry-text">{{ e.texto }}</p>
+          <div class="entry-tags" *ngIf="getEmociones(e).length">
+            <span class="tag" *ngFor="let emo of getEmociones(e)">{{ emo }}</span>
+          </div>
+          <div *ngIf="e.contexto" style="font-size:12px;color:var(--ink-soft);margin-top:8px">📍 {{ e.contexto }}</div>
+        </div>
+      </div>
+
+      <!-- Tab: Gráficas -->
+      <div *ngIf="vistaDetalle==='graficas'">
+        <div *ngIf="!tendenciaFiltrada.length" class="no-data" style="margin-top:40px;text-align:center">
+          <i class="pi pi-chart-line" style="font-size:36px;color:var(--sky-mid);display:block;margin-bottom:12px"></i>
+          Sin datos suficientes para mostrar gráficas.
+        </div>
+
+        <div *ngIf="tendenciaFiltrada.length">
+
+          <!-- Selector de rango -->
+          <div class="rango-selector">
+            <button class="rango-btn" [class.active]="rangoTiempo==='semana'" (click)="cambiarRango('semana')">Última semana</button>
+            <button class="rango-btn" [class.active]="rangoTiempo==='mes'" (click)="cambiarRango('mes')">Último mes</button>
+            <button class="rango-btn" [class.active]="rangoTiempo==='todo'" (click)="cambiarRango('todo')">Todo el historial</button>
+          </div>
+
+          <!-- Gráfica principal -->
+          <div class="app-card" style="margin-bottom:16px">
+            <div class="exp-section-title"><i class="pi pi-chart-line"></i> Tendencia de ánimo y ansiedad</div>
+            <div class="chart-container">
+              <canvas #tendenciaChart></canvas>
+            </div>
+          </div>
+
+          <!-- Resumen automático -->
+          <div class="app-card resumen-card" *ngIf="resumen" style="margin-bottom:16px">
+            <div class="exp-section-title"><i class="pi pi-info-circle"></i> Resumen del período</div>
+            <div class="resumen-grid">
+              <div class="resumen-item">
+                <span class="resumen-label">Ánimo promedio</span>
+                <span class="resumen-val sky">{{ resumen.promAnimo }}/10</span>
+              </div>
+              <div class="resumen-item">
+                <span class="resumen-label">Ansiedad promedio</span>
+                <span class="resumen-val warn">{{ resumen.promAnsiedad }}/10</span>
+              </div>
+              <div class="resumen-item">
+                <span class="resumen-label">Mejor ánimo</span>
+                <span class="resumen-val">{{ resumen.mejorValorAnimo }}/10 <small>({{ resumen.mejorFechaAnimo }})</small></span>
+              </div>
+              <div class="resumen-item">
+                <span class="resumen-label">Mayor ansiedad</span>
+                <span class="resumen-val">{{ resumen.peorValorAnsiedad }}/10 <small>({{ resumen.peorFechaAnsiedad }})</small></span>
+              </div>
+            </div>
+            <div class="resumen-footer">
+              <span class="tendencia-chip">{{ tendenciaAnimo }}</span>
+              <span class="correlacion-chip" *ngIf="correlacion !== null">
+                📊 {{ correlacionTexto() }}
+              </span>
+              <span class="mejora-chip" *ngIf="resumen.totalDias > 0">
+                ✅ {{ resumen.diasMejora }} de {{ resumen.totalDias }} sesiones con mejora de ánimo
+              </span>
+            </div>
+          </div>
+
+          <!-- Emociones agrupadas -->
+          <div class="app-card">
+            <div class="exp-section-title"><i class="pi pi-heart"></i> Emociones frecuentes</div>
+            <div class="emociones-grupo" *ngIf="emocionesPositivas.length">
+              <div class="grupo-label positivo">😊 Positivas</div>
+              <div class="emo-bar" *ngFor="let emo of emocionesPositivas">
+                <span class="emo-nombre">{{ emo[0] }}</span>
+                <div class="emo-track">
+                  <div class="emo-fill positivo" [style.width.%]="(emo[1] / estadisticas.total_entradas) * 100"></div>
+                </div>
+                <span class="emo-count">{{ emo[1] }} vez</span>
+              </div>
+            </div>
+            <div class="emociones-grupo" *ngIf="emocionesNegativas.length" [style.marginTop]="emocionesPositivas.length ? '16px' : '0'">
+              <div class="grupo-label negativo">😔 Negativas</div>
+              <div class="emo-bar" *ngFor="let emo of emocionesNegativas">
+                <span class="emo-nombre">{{ emo[0] }}</span>
+                <div class="emo-track">
+                  <div class="emo-fill negativo" [style.width.%]="(emo[1] / estadisticas.total_entradas) * 100"></div>
+                </div>
+                <span class="emo-count">{{ emo[1] }} vez</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Expediente -->
+      <div *ngIf="vistaDetalle==='expediente'">
+        <div class="exito-msg" *ngIf="mensajeClinica">{{ mensajeClinica }}</div>
+        <div class="error-msg" *ngIf="errorClinica">{{ errorClinica }}</div>
+        <div class="app-card exp-section">
+          <div class="exp-section-title"><i class="pi pi-user"></i> Datos personales</div>
+          <div class="exp-grid">
+            <div class="exp-field"><span class="exp-label">Fecha de nacimiento</span><span class="exp-val">{{ expediente.fecha_nacimiento || '—' }}</span></div>
+            <div class="exp-field"><span class="exp-label">Género</span><span class="exp-val">{{ generoBonito(expediente.genero) }}</span></div>
+            <div class="exp-field"><span class="exp-label">Teléfono</span><span class="exp-val">{{ expediente.telefono || '—' }}</span></div>
+            <div class="exp-field"><span class="exp-label">Dirección</span><span class="exp-val">{{ expediente.direccion || '—' }}</span></div>
+          </div>
+        </div>
+        <div class="app-card exp-section">
+          <div class="exp-section-title"><i class="pi pi-phone"></i> Contacto de emergencia</div>
+          <div class="exp-grid">
+            <div class="exp-field"><span class="exp-label">Nombre</span><span class="exp-val">{{ expediente.emergencia_nombre || '—' }}</span></div>
+            <div class="exp-field"><span class="exp-label">Teléfono</span><span class="exp-val">{{ expediente.emergencia_telefono || '—' }}</span></div>
+            <div class="exp-field"><span class="exp-label">Relación</span><span class="exp-val">{{ expediente.emergencia_relacion || '—' }}</span></div>
+          </div>
+        </div>
+        <div class="app-card exp-section">
+          <div class="exp-section-title-row">
+            <div class="exp-section-title"><i class="pi pi-heart"></i> Información clínica</div>
+            <button class="btn-icon" *ngIf="!editandoClinica" (click)="editarClinica()"><i class="pi pi-pencil"></i></button>
+          </div>
+          <div *ngIf="!editandoClinica">
+            <div class="exp-field-full"><span class="exp-label">Motivo de consulta</span><p class="exp-val">{{ expediente.motivo_consulta || '—' }}</p></div>
+            <div class="exp-field-full"><span class="exp-label">Diagnóstico</span><p class="exp-val">{{ expediente.diagnostico || '—' }}</p></div>
+            <div class="exp-field-full"><span class="exp-label">Medicamentos</span><p class="exp-val">{{ expediente.medicamentos || '—' }}</p></div>
+            <div class="exp-field-full"><span class="exp-label">Antecedentes</span><p class="exp-val">{{ expediente.antecedentes || '—' }}</p></div>
+          </div>
+          <div *ngIf="editandoClinica">
+            <div class="form-group"><label class="label">Motivo de consulta</label><textarea class="input-field" rows="3" [(ngModel)]="clinicaMotivoConsulta"></textarea></div>
+            <div class="form-group"><label class="label">Diagnóstico</label><textarea class="input-field" rows="3" [(ngModel)]="clinicaDiagnostico"></textarea></div>
+            <div class="form-group"><label class="label">Medicamentos actuales</label><textarea class="input-field" rows="2" [(ngModel)]="clinicaMedicamentos"></textarea></div>
+            <div class="form-group"><label class="label">Antecedentes relevantes</label><textarea class="input-field" rows="3" [(ngModel)]="clinicaAntecedentes"></textarea></div>
+            <div class="form-actions">
+              <button class="btn-secondary" (click)="cancelarClinica()">Cancelar</button>
+              <button class="btn-primary" (click)="guardarClinica()" [disabled]="guardandoClinica">{{ guardandoClinica ? 'Guardando...' : 'Guardar' }}</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Notas -->
+      <div *ngIf="vistaDetalle==='notas'">
+        <div class="app-card exp-section">
+          <div class="exp-section-title"><i class="pi pi-plus-circle"></i> Nueva nota de sesión</div>
+          <div class="form-group">
+            <textarea class="input-field" rows="4" [(ngModel)]="nuevaNota" placeholder="Escribe las observaciones de la sesión de hoy..."></textarea>
+          </div>
+          <div class="exito-msg" *ngIf="mensajaNota">{{ mensajaNota }}</div>
+          <div style="display:flex;justify-content:flex-end;margin-top:8px">
+            <button class="btn-primary" (click)="agregarNota()" [disabled]="!nuevaNota.trim() || guardandoNota">
+              {{ guardandoNota ? 'Guardando...' : 'Guardar nota' }}
+            </button>
+          </div>
+        </div>
+        <div *ngIf="!notas.length" class="no-data">Sin notas de sesión aún.</div>
+        <div class="nota-card app-card" *ngFor="let n of notas">
+          <div class="nota-head">
+            <span class="nota-fecha">{{ formatFechaHora(n.fecha) }}</span>
+            <button class="btn-icon danger" (click)="eliminarNota(n.id)"><i class="pi pi-trash"></i></button>
+          </div>
+          <p class="nota-texto">{{ n.nota }}</p>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>

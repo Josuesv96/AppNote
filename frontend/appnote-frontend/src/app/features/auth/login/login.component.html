@@ -1,0 +1,37 @@
+<div class="login-wrap">
+  <div class="login-card">
+    <div class="brand">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8">
+          <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2"/>
+          <path d="M8 12h8M12 8v8" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-name">AppNote</div>
+        <div class="brand-sub">Diario Mental</div>
+      </div>
+    </div>
+
+    <h1 class="form-title">Bienvenido de vuelta</h1>
+    <p class="form-sub">Ingresa a tu espacio de reflexión</p>
+
+    <div class="form-group">
+      <label class="label">Correo electrónico</label>
+      <input class="input-field" type="email" [(ngModel)]="email" placeholder="tu@correo.com" (keyup.enter)="login()">
+    </div>
+
+    <div class="form-group">
+      <label class="label">Contraseña</label>
+      <input class="input-field" type="password" [(ngModel)]="password" placeholder="••••••••" (keyup.enter)="login()">
+    </div>
+
+    <div class="error-msg" *ngIf="error">{{ error }}</div>
+
+    <button class="btn-primary full" (click)="login()" [disabled]="loading">
+      {{ loading ? 'Ingresando...' : 'Ingresar' }}
+    </button>
+
+    <p class="register-link">¿No tienes cuenta? <a routerLink="/registro">Regístrate</a></p>
+  </div>
+</div>

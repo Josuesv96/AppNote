@@ -1,0 +1,10 @@
+@use '../login/login.component.scss';
+
+.exito-msg {
+  background: #F0FEF4;
+  color: var(--ok);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  margin-bottom: 16px;
+}

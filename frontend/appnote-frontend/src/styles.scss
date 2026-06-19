@@ -1,0 +1,113 @@
+@import "primeicons/primeicons.css";
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --sky: #4A9CC8;
+  --sky-light: #E8F4FB;
+  --sky-mid: #B3D9EF;
+  --sky-deep: #2B7A9E;
+  --ink: #1A2733;
+  --ink-mid: #4A6070;
+  --ink-soft: #8AA0AE;
+  --surface: #F7FBFE;
+  --card: #FFFFFF;
+  --border: #D4E8F4;
+  --ok: #5BB08A;
+  --warn: #E8A85A;
+  --danger: #E07070;
+}
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--surface);
+  color: var(--ink);
+  min-height: 100vh;
+}
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Serif+Display:ital@0;1&display=swap');
+
+.app-card {
+  background: var(--card);
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  padding: 24px;
+  box-shadow: 0 2px 12px rgba(74,156,200,.06);
+}
+
+.btn-primary {
+  background: var(--sky);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 24px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background .15s;
+  font-family: 'DM Sans', sans-serif;
+  &:hover { background: var(--sky-deep); }
+  &:disabled { opacity: .5; cursor: not-allowed; }
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--sky-deep);
+  border: 1.5px solid var(--sky);
+  border-radius: 8px;
+  padding: 9px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  &:hover { background: var(--sky-light); }
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.page-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 24px;
+  color: var(--ink);
+}
+
+.label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-soft);
+  letter-spacing: .4px;
+  text-transform: uppercase;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.input-field {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  color: var(--ink);
+  background: #fff;
+  outline: none;
+  transition: border .15s;
+  &:focus { border-color: var(--sky); }
+}
+
+.tag {
+  display: inline-block;
+  padding: 3px 10px;
+  background: var(--sky-light);
+  color: var(--sky-deep);
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+}

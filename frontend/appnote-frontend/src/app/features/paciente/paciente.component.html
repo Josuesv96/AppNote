@@ -1,0 +1,262 @@
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8">
+          <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2"/>
+          <path d="M8 12h8M12 8v8" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <span class="brand-name">AppNote</span>
+    </div>
+    <nav class="sidebar-nav">
+      <button [class.active]="vista==='escribir'" (click)="cambiarVista('escribir')">
+        <i class="pi pi-pencil"></i> Escribir
+      </button>
+      <button [class.active]="vista==='historial'" (click)="cambiarVista('historial')">
+        <i class="pi pi-list"></i> Historial
+      </button>
+      <button [class.active]="vista==='evolucion'" (click)="cambiarVista('evolucion')">
+        <i class="pi pi-chart-line"></i> Mi evolución
+      </button>
+      <button [class.active]="vista==='expediente'" (click)="cambiarVista('expediente')">
+        <i class="pi pi-id-card"></i> Mi expediente
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <span class="user-name">{{ auth.getNombre() }}</span>
+      <button class="logout-btn" (click)="auth.logout()"><i class="pi pi-sign-out"></i></button>
+    </div>
+  </aside>
+
+  <main class="main-content">
+
+    <!-- Escribir -->
+    <div *ngIf="vista==='escribir'">
+      <div class="page-header">
+        <div>
+          <div class="page-title">¿Cómo estás hoy?</div>
+          <div class="date-label">{{ hoy }}</div>
+        </div>
+        <div class="saved-msg" *ngIf="mensajeGuardado">✓ Guardado</div>
+      </div>
+      <div class="app-card write-card">
+        <textarea class="text-area" [(ngModel)]="texto" placeholder="Escribe libremente lo que está pasando por tu mente..."></textarea>
+        <div class="fields-grid">
+          <div class="field-group">
+            <label class="label">Estado de ánimo</label>
+            <div class="slider-row">
+              <input type="range" min="1" max="10" [(ngModel)]="estadoAnimo">
+              <span class="slider-val">{{ estadoAnimo }}/10</span>
+            </div>
+          </div>
+          <div class="field-group">
+            <label class="label">Nivel de ansiedad</label>
+            <div class="slider-row">
+              <input type="range" min="1" max="10" [(ngModel)]="ansiedad">
+              <span class="slider-val" style="color:var(--warn)">{{ ansiedad }}/10</span>
+            </div>
+          </div>
+        </div>
+        <div class="field-group" style="margin-top:16px">
+          <label class="label">¿Cómo te sientes?</label>
+          <div class="emo-grid">
+            <button *ngFor="let e of emocionesDisponibles"
+              class="emo-btn" [class.sel]="emocionesSeleccionadas.has(e)"
+              (click)="toggleEmocion(e)">{{ e }}</button>
+          </div>
+        </div>
+        <div class="field-group" style="margin-top:16px">
+          <label class="label">Contexto o desencadenante</label>
+          <input class="input-field" [(ngModel)]="contexto" placeholder="¿Qué lo provocó? (opcional)">
+        </div>
+        <div class="card-footer">
+          <span class="char-count">{{ texto.length }} caracteres</span>
+          <button class="btn-primary" (click)="guardar()" [disabled]="!texto.trim() || guardando">
+            {{ guardando ? 'Guardando...' : 'Guardar entrada' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Historial -->
+    <div *ngIf="vista==='historial'">
+      <div class="page-header"><div class="page-title">Mis entradas</div></div>
+      <div *ngIf="!entradas.length" class="empty-state">
+        <i class="pi pi-book" style="font-size:36px;color:var(--sky-mid)"></i>
+        <p>Aún no tienes entradas. ¡Empieza escribiendo hoy!</p>
+      </div>
+      <div class="entry-card app-card" *ngFor="let e of entradas">
+        <div class="entry-head">
+          <span class="entry-date">{{ formatFecha(e.timestamp) }}</span>
+          <div class="entry-indicators">
+            <span class="ind mood">◉ {{ e.estado_animo }}/10</span>
+            <span class="ind anx">⚡ {{ e.ansiedad }}/10</span>
+          </div>
+          <button class="del-btn" (click)="eliminar(e.id)" title="Eliminar">
+            <i class="pi pi-trash"></i>
+          </button>
+        </div>
+        <p class="entry-text">{{ e.texto }}</p>
+        <div class="entry-tags" *ngIf="getEmociones(e).length">
+          <span class="tag" *ngFor="let emo of getEmociones(e)">{{ emo }}</span>
+        </div>
+        <div class="entry-context" *ngIf="e.contexto">📍 {{ e.contexto }}</div>
+      </div>
+    </div>
+
+    <!-- Mi evolución -->
+    <div *ngIf="vista==='evolucion'">
+      <div class="page-header">
+        <div class="page-title">Mi evolución emocional</div>
+      </div>
+
+      <div *ngIf="!entradas.length" class="empty-state">
+        <i class="pi pi-chart-line" style="font-size:36px;color:var(--sky-mid)"></i>
+        <p>Aún no tienes entradas. ¡Empieza escribiendo para ver tu evolución!</p>
+      </div>
+
+      <div *ngIf="entradas.length">
+        <div class="rango-selector">
+          <button class="rango-btn" [class.active]="rangoTiempo==='semana'" (click)="cambiarRango('semana')">Última semana</button>
+          <button class="rango-btn" [class.active]="rangoTiempo==='mes'" (click)="cambiarRango('mes')">Último mes</button>
+          <button class="rango-btn" [class.active]="rangoTiempo==='todo'" (click)="cambiarRango('todo')">Todo</button>
+        </div>
+
+        <!-- Tarjetas resumen -->
+        <div class="evo-stats-grid">
+          <div class="app-card stat-mini">
+            <div class="stat-mini-label">Entradas registradas</div>
+            <div class="stat-mini-val">{{ totalEntradas }}</div>
+          </div>
+          <div class="app-card stat-mini">
+            <div class="stat-mini-label">Ánimo promedio</div>
+            <div class="stat-mini-val sky">{{ promAnimo }}<span>/10</span></div>
+          </div>
+          <div class="app-card stat-mini">
+            <div class="stat-mini-label">Ansiedad promedio</div>
+            <div class="stat-mini-val warn">{{ promAnsiedad }}<span>/10</span></div>
+          </div>
+        </div>
+
+                <!-- Gráfica -->
+        <div class="app-card" style="margin-bottom:16px" *ngIf="entradasFiltradas.length > 1">
+          <div class="evo-section-title"><i class="pi pi-chart-line"></i> Tendencia de ánimo y ansiedad</div>
+          <div class="chart-container">
+            <canvas #evolucionChart></canvas>
+          </div>
+          <div class="tendencia-label" *ngIf="tendenciaAnimo">{{ tendenciaAnimo }}</div>
+        </div>
+
+        <!-- Comparación con período anterior -->
+        <div class="comparacion-chip" [ngClass]="comparacionTipo" *ngIf="comparacionTexto">
+          <div class="comp-icon">
+            <i class="pi"
+              [class.pi-arrow-up]="comparacionTipo==='mejora'"
+              [class.pi-arrow-down]="comparacionTipo==='baja'"
+              [class.pi-minus]="comparacionTipo==='estable'"></i>
+          </div>
+          <div class="comp-texto" [innerHTML]="comparacionTexto"></div>
+        </div>
+
+        <!-- Nota del sistema -->
+        <div class="app-card nota-sistema" *ngIf="notaSistema">
+          <div class="nota-sistema-icon">💬</div>
+          <div>
+            <p class="nota-sistema-texto">{{ notaSistema }}</p>
+            <p class="nota-sistema-disclaimer">Recuerda: esto no es un diagnóstico. Comparte estas estadísticas con tu terapeuta en tu próxima sesión.</p>
+          </div>
+        </div>
+
+        <!-- Emociones frecuentes -->
+        <div class="app-card" *ngIf="emocionesFrec.length">
+          <div class="evo-section-title"><i class="pi pi-heart"></i> Emociones frecuentes</div>
+          <div class="emociones-grupo" *ngIf="emocionesPositivas.length">
+            <div class="grupo-label positivo">😊 Positivas</div>
+            <div class="emo-bar" *ngFor="let emo of emocionesPositivas">
+              <span class="emo-nombre">{{ emo[0] }}</span>
+              <div class="emo-track">
+                <div class="emo-fill positivo" [style.width.%]="(emo[1] / totalEntradas) * 100"></div>
+              </div>
+              <span class="emo-count">{{ emo[1] }}</span>
+            </div>
+          </div>
+          <div class="emociones-grupo" *ngIf="emocionesNegativas.length" [style.marginTop]="emocionesPositivas.length ? '16px' : '0'">
+            <div class="grupo-label negativo">😔 Momentos difíciles</div>
+            <div class="emo-bar" *ngFor="let emo of emocionesNegativas">
+              <span class="emo-nombre">{{ emo[0] }}</span>
+              <div class="emo-track">
+                <div class="emo-fill negativo" [style.width.%]="(emo[1] / totalEntradas) * 100"></div>
+              </div>
+              <span class="emo-count">{{ emo[1] }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Expediente -->
+    <div *ngIf="vista==='expediente'">
+      <div class="page-header">
+        <div class="page-title">Mi expediente</div>
+        <button class="btn-primary" *ngIf="!editandoExpediente" (click)="editarExpediente()">
+          <i class="pi pi-pencil"></i> Editar
+        </button>
+      </div>
+      <div class="exito-msg" *ngIf="mensajeExpediente">{{ mensajeExpediente }}</div>
+      <div class="error-msg" *ngIf="errorExpediente">{{ errorExpediente }}</div>
+
+      <div *ngIf="!editandoExpediente">
+        <div class="app-card exp-section">
+          <div class="exp-section-title"><i class="pi pi-user"></i> Datos personales</div>
+          <div class="exp-grid">
+            <div class="exp-field"><span class="exp-label">Fecha de nacimiento</span><span class="exp-val">{{ expediente.fecha_nacimiento || '—' }}</span></div>
+            <div class="exp-field"><span class="exp-label">Género</span><span class="exp-val">{{ generoBonito(expediente.genero) }}</span></div>
+            <div class="exp-field"><span class="exp-label">Teléfono</span><span class="exp-val">{{ expediente.telefono || '—' }}</span></div>
+            <div class="exp-field"><span class="exp-label">Dirección</span><span class="exp-val">{{ expediente.direccion || '—' }}</span></div>
+          </div>
+        </div>
+        <div class="app-card exp-section">
+          <div class="exp-section-title"><i class="pi pi-phone"></i> Contacto de emergencia</div>
+          <div class="exp-grid">
+            <div class="exp-field"><span class="exp-label">Nombre</span><span class="exp-val">{{ expediente.emergencia_nombre || '—' }}</span></div>
+            <div class="exp-field"><span class="exp-label">Teléfono</span><span class="exp-val">{{ expediente.emergencia_telefono || '—' }}</span></div>
+            <div class="exp-field"><span class="exp-label">Relación</span><span class="exp-val">{{ expediente.emergencia_relacion || '—' }}</span></div>
+          </div>
+        </div>
+
+      </div>
+
+      <div *ngIf="editandoExpediente">
+        <div class="app-card exp-section">
+          <div class="exp-section-title"><i class="pi pi-user"></i> Datos personales</div>
+          <div class="form-group"><label class="label">Fecha de nacimiento</label><input class="input-field" type="date" [(ngModel)]="expFechaNacimiento"></div>
+          <div class="form-group"><label class="label">Género</label>
+            <select class="input-field" [(ngModel)]="expGenero">
+              <option value="">Seleccionar...</option>
+              <option value="masculino">Masculino</option>
+              <option value="femenino">Femenino</option>
+              <option value="otro">Otro</option>
+              <option value="prefiero_no_decir">Prefiero no decir</option>
+            </select>
+          </div>
+          <div class="form-group"><label class="label">Teléfono</label><input class="input-field" type="tel" [(ngModel)]="expTelefono"></div>
+          <div class="form-group"><label class="label">Dirección</label><input class="input-field" [(ngModel)]="expDireccion"></div>
+        </div>
+        <div class="app-card exp-section">
+          <div class="exp-section-title"><i class="pi pi-phone"></i> Contacto de emergencia</div>
+          <div class="form-group"><label class="label">Nombre del contacto</label><input class="input-field" [(ngModel)]="expEmergenciaNombre"></div>
+          <div class="form-group"><label class="label">Teléfono del contacto</label><input class="input-field" type="tel" [(ngModel)]="expEmergenciaTelefono"></div>
+          <div class="form-group"><label class="label">Relación</label><input class="input-field" [(ngModel)]="expEmergenciaRelacion" placeholder="Ej: madre, esposo, amigo"></div>
+        </div>
+        <div class="form-actions" style="margin-top:8px">
+          <button class="btn-secondary" (click)="cancelarExpediente()">Cancelar</button>
+          <button class="btn-primary" (click)="guardarExpediente()" [disabled]="guardandoExpediente">
+            {{ guardandoExpediente ? 'Guardando...' : 'Guardar expediente' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
