@@ -233,7 +233,7 @@
         <div class="nota-card app-card" *ngFor="let n of notas">
           <div class="nota-head">
             <span class="nota-fecha">{{ formatFechaHora(n.fecha) }}</span>
-            <button class="btn-icon danger" (click)="eliminarNota(n.id)"><i class="pi pi-trash"></i></button>
+            <button class="btn-icon danger" (click)="confirmarEliminarNota(n)"><i class="pi pi-trash"></i></button>
           </div>
           <p class="nota-texto">{{ n.nota }}</p>
         </div>
@@ -241,4 +241,22 @@
 
     </div>
   </main>
+</div>
+
+<!-- Modal de confirmación para eliminar nota de sesión -->
+<div class="modal-overlay" *ngIf="notaAEliminar" (click)="cancelarEliminarNota()">
+  <div class="modal-box" (click)="$event.stopPropagation()">
+    <div class="modal-icon"><i class="pi pi-exclamation-triangle"></i></div>
+    <div class="modal-title">¿Eliminar esta nota?</div>
+    <div class="modal-body">
+      Vas a eliminar la nota de sesión del {{ formatFecha(notaAEliminar!.fecha) }}.<br>
+      Esta acción no se puede deshacer.
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" (click)="cancelarEliminarNota()">Cancelar</button>
+      <button class="btn-danger" (click)="ejecutarEliminarNota()" [disabled]="eliminandoNota">
+        {{ eliminandoNota ? 'Eliminando...' : 'Sí, eliminar' }}
+      </button>
+    </div>
+  </div>
 </div>

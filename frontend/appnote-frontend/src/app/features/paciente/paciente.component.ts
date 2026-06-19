@@ -5,6 +5,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { EntradaService, Entrada } from '../../core/services/entrada.service';
 import { ExpedienteService } from '../../core/services/expediente.service';
 import { Chart, registerables } from 'chart.js';
+import { pendienteRegresion, lineaTendencia } from '../../core/utils/stats.utils';
 
 Chart.register(...registerables);
 
@@ -34,6 +35,8 @@ export class PacienteComponent implements OnInit, AfterViewChecked {
   guardando = false;
   mensajeGuardado = false;
   hoy = '';
+  entradaAEliminar: Entrada | null = null;
+  eliminandoEntrada = false;
 
   // Expediente
   expediente: any = {};
@@ -152,13 +155,7 @@ export class PacienteComponent implements OnInit, AfterViewChecked {
 
     // Tendencia por regresión lineal
     const animos = filtradas.map(e => e.estado_animo);
-    const n = animos.length;
-    const sumX = animos.reduce((_, __, i) => _ + i, 0);
-    const sumY = animos.reduce((a, b) => a + b, 0);
-    const sumXY = animos.reduce((acc, y, i) => acc + i * y, 0);
-    const sumX2 = animos.reduce((acc, _, i) => acc + i * i, 0);
-    const denom = n * sumX2 - sumX * sumX;
-    const pendiente = denom === 0 ? 0 : (n * sumXY - sumX * sumY) / denom;
+    const pendiente = pendienteRegresion(animos);
 
     if (pendiente > 0.2) this.tendenciaAnimo = '📈 Tu ánimo ha mejorado en este período';
     else if (pendiente < -0.2) this.tendenciaAnimo = '📉 Tu ánimo ha bajado un poco en este período';
@@ -263,16 +260,8 @@ export class PacienteComponent implements OnInit, AfterViewChecked {
     const animos = agrupado.map(d => d.animo);
     const ansiedades = agrupado.map(d => d.ansiedad);
 
-    // Regresión lineal
-    const n = animos.length;
-    const sumX = animos.reduce((_, __, i) => _ + i, 0);
-    const sumY = animos.reduce((a, b) => a + b, 0);
-    const sumXY = animos.reduce((acc, y, i) => acc + i * y, 0);
-    const sumX2 = animos.reduce((acc, _, i) => acc + i * i, 0);
-    const denom = n * sumX2 - sumX * sumX;
-    const m = denom === 0 ? 0 : (n * sumXY - sumX * sumY) / denom;
-    const b = (sumY - m * sumX) / n;
-    const tendencia = animos.map((_, i) => +(m * i + b).toFixed(2));
+    // Línea de tendencia (regresión lineal)
+    const tendencia = lineaTendencia(animos);
 
     this.chart = new Chart(canvas, {
       type: 'line',
@@ -407,8 +396,34 @@ export class PacienteComponent implements OnInit, AfterViewChecked {
     });
   }
 
-  eliminar(id: number) {
-    this.entradaService.eliminarEntrada(id).subscribe(() => this.cargarEntradas());
+  // Eliminar entrada (con confirmación)
+  confirmarEliminar(e: Entrada) {
+    this.entradaAEliminar = e;
+    this.cdr.detectChanges();
+  }
+
+  cancelarEliminar() {
+    this.entradaAEliminar = null;
+    this.cdr.detectChanges();
+  }
+
+  ejecutarEliminar() {
+    if (!this.entradaAEliminar) return;
+    this.eliminandoEntrada = true;
+    this.cdr.detectChanges();
+    this.entradaService.eliminarEntrada(this.entradaAEliminar.id).subscribe({
+      next: () => {
+        this.eliminandoEntrada = false;
+        this.entradaAEliminar = null;
+        this.cargarEntradas();
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.eliminandoEntrada = false;
+        this.entradaAEliminar = null;
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   getEmociones(e: Entrada): string[] {

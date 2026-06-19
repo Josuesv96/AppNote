@@ -5,6 +5,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { TerapeutaService } from '../../core/services/terapeuta.service';
 import { ExpedienteService } from '../../core/services/expediente.service';
 import { Chart, registerables } from 'chart.js';
+import { pendienteRegresion, lineaTendencia } from '../../core/utils/stats.utils';
 
 Chart.register(...registerables);
 
@@ -47,6 +48,8 @@ export class TerapeutaComponent implements OnInit, AfterViewChecked {
   nuevaNota = '';
   guardandoNota = false;
   mensajaNota = '';
+  notaAEliminar: any | null = null;
+  eliminandoNota = false;
 
   // Emociones agrupadas
   emocionesPositivas: any[] = [];
@@ -139,12 +142,7 @@ export class TerapeutaComponent implements OnInit, AfterViewChecked {
     }
 
     // Regresión lineal simple para tendencia de ánimo
-    const n = animos.length;
-    const sumX = animos.reduce((_, __, i) => _ + i, 0);
-    const sumY = animos.reduce((a, b) => a + b, 0);
-    const sumXY = animos.reduce((acc, y, i) => acc + i * y, 0);
-    const sumX2 = animos.reduce((acc, _, i) => acc + i * i, 0);
-    const pendiente = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+    const pendiente = pendienteRegresion(animos);
 
     if (pendiente > 0.2) this.tendenciaAnimo = `📈 Tendencia del ánimo: +${pendiente.toFixed(1)} pts/sesión (mejoría progresiva)`;
     else if (pendiente < -0.2) this.tendenciaAnimo = `📉 Tendencia del ánimo: ${pendiente.toFixed(1)} pts/sesión (descenso — explorar detonantes)`;
@@ -217,15 +215,8 @@ export class TerapeutaComponent implements OnInit, AfterViewChecked {
     const animo = this.tendenciaFiltrada.map(t => t.animo);
     const ansiedad = this.tendenciaFiltrada.map(t => t.ansiedad);
 
-    // Regresión lineal para línea de tendencia
-    const n = animo.length;
-    const sumX = animo.reduce((_, __, i) => _ + i, 0);
-    const sumY = animo.reduce((a, b) => a + b, 0);
-    const sumXY = animo.reduce((acc, y, i) => acc + i * y, 0);
-    const sumX2 = animo.reduce((acc, _, i) => acc + i * i, 0);
-    const m = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX || 1);
-    const b = (sumY - m * sumX) / n;
-    const tendencia = animo.map((_, i) => +(m * i + b).toFixed(2));
+    // Línea de tendencia (regresión lineal)
+    const tendencia = lineaTendencia(animo);
 
     this.chart = new Chart(canvas, {
       type: 'line',
@@ -390,9 +381,33 @@ export class TerapeutaComponent implements OnInit, AfterViewChecked {
     });
   }
 
-  eliminarNota(notaId: number) {
-    this.expedienteService.eliminarNota(this.pacienteSeleccionado.id, notaId).subscribe(() => {
-      this.cargarNotas();
+  // Eliminar nota de sesión (con confirmación)
+  confirmarEliminarNota(n: any) {
+    this.notaAEliminar = n;
+    this.cdr.detectChanges();
+  }
+
+  cancelarEliminarNota() {
+    this.notaAEliminar = null;
+    this.cdr.detectChanges();
+  }
+
+  ejecutarEliminarNota() {
+    if (!this.notaAEliminar) return;
+    this.eliminandoNota = true;
+    this.cdr.detectChanges();
+    this.expedienteService.eliminarNota(this.pacienteSeleccionado.id, this.notaAEliminar.id).subscribe({
+      next: () => {
+        this.eliminandoNota = false;
+        this.notaAEliminar = null;
+        this.cargarNotas();
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.eliminandoNota = false;
+        this.notaAEliminar = null;
+        this.cdr.detectChanges();
+      }
     });
   }
 

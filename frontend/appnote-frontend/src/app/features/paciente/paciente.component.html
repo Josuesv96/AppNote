@@ -93,7 +93,7 @@
             <span class="ind mood">◉ {{ e.estado_animo }}/10</span>
             <span class="ind anx">⚡ {{ e.ansiedad }}/10</span>
           </div>
-          <button class="del-btn" (click)="eliminar(e.id)" title="Eliminar">
+          <button class="del-btn" (click)="confirmarEliminar(e)" title="Eliminar">
             <i class="pi pi-trash"></i>
           </button>
         </div>
@@ -156,7 +156,7 @@
               [class.pi-arrow-down]="comparacionTipo==='baja'"
               [class.pi-minus]="comparacionTipo==='estable'"></i>
           </div>
-          <div class="comp-texto" [innerHTML]="comparacionTexto"></div>
+          <div class="comp-texto">{{ comparacionTexto }}</div>
         </div>
 
         <!-- Nota del sistema -->
@@ -259,4 +259,22 @@
     </div>
 
   </main>
+</div>
+
+<!-- Modal de confirmación para eliminar entrada -->
+<div class="modal-overlay" *ngIf="entradaAEliminar" (click)="cancelarEliminar()">
+  <div class="modal-box" (click)="$event.stopPropagation()">
+    <div class="modal-icon"><i class="pi pi-exclamation-triangle"></i></div>
+    <div class="modal-title">¿Eliminar esta entrada?</div>
+    <div class="modal-body">
+      Vas a eliminar la entrada del {{ formatFecha(entradaAEliminar!.timestamp) }}.<br>
+      Esta acción no se puede deshacer.
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" (click)="cancelarEliminar()">Cancelar</button>
+      <button class="btn-danger" (click)="ejecutarEliminar()" [disabled]="eliminandoEntrada">
+        {{ eliminandoEntrada ? 'Eliminando...' : 'Sí, eliminar' }}
+      </button>
+    </div>
+  </div>
 </div>

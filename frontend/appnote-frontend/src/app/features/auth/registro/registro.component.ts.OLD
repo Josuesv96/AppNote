@@ -27,7 +27,7 @@ export class RegistroComponent {
     }
     this.loading = true;
     this.error = '';
-    this.auth.registro({ nombre: this.nombre, email: this.email, password: this.password })
+    this.auth.registro({ nombre: this.nombre, email: this.email, password: this.password, rol: 'paciente' })
       .subscribe({
         next: () => {
           this.loading = false;

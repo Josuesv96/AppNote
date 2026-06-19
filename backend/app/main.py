@@ -1,12 +1,19 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi.errors import RateLimitExceeded
+from slowapi import _rate_limit_exceeded_handler
 from app.routers import auth, entradas, terapeuta, admin, expediente
 from app.database import engine, Base
+from app.core.limiter import limiter
 
 # Crear tablas
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="AppNote API", version="1.0.0")
+
+# Rate limiting: registrar el limiter y el manejador de "limite excedido" (HTTP 429)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Configurar CORS
 app.add_middleware(
@@ -22,9 +29,9 @@ app.add_middleware(
 )
 
 # Incluir routers
-# auth NO tiene prefix en el router, por eso necesita prefix aquí
+# auth NO tiene prefix en el router, por eso necesita prefix aqui
 app.include_router(auth.router, prefix="/auth", tags=["Auth"])
-# Los demás routers YA tienen prefix definido en su propio archivo
+# Los demas routers YA tienen prefix definido en su propio archivo
 app.include_router(entradas.router, tags=["Entradas"])
 app.include_router(terapeuta.router, tags=["Terapeuta"])
 app.include_router(admin.router, tags=["Admin"])

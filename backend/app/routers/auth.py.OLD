@@ -1,21 +1,18 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import timedelta
 from app.database import get_db
-from app.models.usuario import Usuario, RolUsuario
-from app.schemas.usuario import UsuarioRegistroPublico, UsuarioOut
+from app.models.usuario import Usuario
+from app.schemas.usuario import UsuarioCreate, UsuarioOut
 from app.core.security import verify_password, get_password_hash, create_access_token
 from app.core.config import settings
 from app.core.auditoria import registrar
-from app.core.limiter import limiter
 
 router = APIRouter()
 
 @router.post("/login")
-@limiter.limit("5/minute")
 def login(
-    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
@@ -56,11 +53,9 @@ def login(
         "id": usuario.id
     }
 
-@router.post("/registro", response_model=UsuarioOut, status_code=status.HTTP_201_CREATED)
-@limiter.limit("3/minute")
+@router.post("/registro", response_model=UsuarioOut)
 def registro(
-    request: Request,
-    usuario_data: UsuarioRegistroPublico,
+    usuario_data: UsuarioCreate,
     db: Session = Depends(get_db)
 ):
     existing = db.query(Usuario).filter(Usuario.email == usuario_data.email).first()
@@ -69,19 +64,17 @@ def registro(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="El email ya está registrado"
         )
-
-    # SEGURIDAD: el registro público SIEMPRE crea pacientes.
-    # El rol no se toma del cuerpo de la petición bajo ninguna circunstancia.
+    
     nuevo_usuario = Usuario(
         nombre=usuario_data.nombre,
         email=usuario_data.email,
         password_hash=get_password_hash(usuario_data.password),
-        rol=RolUsuario.paciente
+        rol=usuario_data.rol
     )
     db.add(nuevo_usuario)
     db.commit()
     db.refresh(nuevo_usuario)
-
-    registrar(db, "REGISTRO", f"Nuevo paciente: {nuevo_usuario.email}")
-
+    
+    registrar(db, "REGISTRO", f"Nuevo usuario: {nuevo_usuario.email}")
+    
     return nuevo_usuario
