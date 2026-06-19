@@ -5,10 +5,10 @@ from app.database import get_db
 from app.models.usuario import Usuario, RolUsuario
 from app.models.relacion import RelacionTerapeutaPaciente
 from app.models.entrada import Entrada
-from app.schemas.usuario import UsuarioOut, UsuarioUpdate
+from app.schemas.usuario import UsuarioCreate, UsuarioOut, UsuarioUpdate
 from app.core.dependencies import require_rol
 from app.core.auditoria import registrar
-from app.core.security import hash_password
+from app.core.security import hash_password, get_password_hash
 
 router = APIRouter(prefix="/admin", tags=["Administrador"])
 
@@ -18,6 +18,37 @@ def listar_usuarios(
     current_admin: Usuario = Depends(require_rol(RolUsuario.admin))
 ):
     return db.query(Usuario).all()
+
+@router.post("/usuarios", response_model=UsuarioOut, status_code=201)
+def crear_usuario(
+    datos: UsuarioCreate,
+    db: Session = Depends(get_db),
+    current_admin: Usuario = Depends(require_rol(RolUsuario.admin))
+):
+    """
+    Creación de usuarios con rol específico (terapeuta, admin o paciente).
+    Protegido: solo un administrador autenticado puede acceder.
+    Este es el ÚNICO camino para crear cuentas con rol distinto a paciente.
+    """
+    existing = db.query(Usuario).filter(Usuario.email == datos.email).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="El email ya está registrado")
+
+    nuevo = Usuario(
+        nombre=datos.nombre,
+        email=datos.email,
+        password_hash=get_password_hash(datos.password),
+        rol=datos.rol
+    )
+    db.add(nuevo)
+    db.commit()
+    db.refresh(nuevo)
+    registrar(
+        db, "CREAR_USUARIO",
+        f"Admin creó usuario {nuevo.email} con rol {nuevo.rol.value}",
+        usuario_id=current_admin.id, usuario_nombre=current_admin.nombre
+    )
+    return nuevo
 
 @router.patch("/usuarios/{usuario_id}/activar")
 def toggle_activo(
@@ -62,6 +93,19 @@ def editar_usuario(
     usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    # SEGURIDAD: un admin no puede quitarse a sí mismo el rol de admin
+    # (evita quedarse fuera del sistema por accidente).
+    if (
+        usuario_id == current_admin.id
+        and datos.rol is not None
+        and datos.rol != RolUsuario.admin
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="No puedes cambiar tu propio rol de administrador"
+        )
+
     if datos.nombre is not None:
         usuario.nombre = datos.nombre
     if datos.email is not None:
@@ -230,14 +274,3 @@ def test_admin(
 @router.get("/public-test")
 def public_test():
     return {"message": "Public test endpoint works!"}
-@router.get("/test")
-def test_admin(
-    db: Session = Depends(get_db),
-    current_admin: Usuario = Depends(require_rol(RolUsuario.admin))
-):
-    return {"message": "Admin endpoint works!", "user": current_admin.email}
-
-
-@router.get("/public-test")
-def public_test():
-    return {"message": "Public test - admin works!"}

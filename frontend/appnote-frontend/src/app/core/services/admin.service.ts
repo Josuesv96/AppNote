@@ -20,7 +20,7 @@ export class AdminService {
     );
   }
   crearUsuario(datos: any): Observable<any> {
-    return this.http.post(`${this.api}/auth/registro`, datos);
+    return this.http.post(`${this.api}/admin/usuarios`, datos);
   }
   editarUsuario(id: number, datos: any): Observable<any> {
     return this.http.put(`${this.api}/admin/usuarios/${id}`, datos);
